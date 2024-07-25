@@ -86,11 +86,11 @@ app.post("/login", async (req, res) => {
 
         const isPasswordMatch = await bcrypt.compare(password, oldUser.password);
         if (isPasswordMatch) {
-    const token = jwt.sign({ contactinfo: oldUser.contactinfo }, jwtSecret, { expiresIn: '365d' });
-    res.status(200).send({ status: "ok", data: token });
-} else {
-    res.status(400).send({ status: "error", data: "Invalid credentials" });
-}
+            const token = jwt.sign({ contactinfo: oldUser.contactinfo }, jwtSecret, { expiresIn: '365d' });
+            res.status(200).send({ status: "ok", data: token });
+        } else {
+            res.status(400).send({ status: "error", data: "Invalid credentials" });
+        }
     } catch (err) {
         console.log(err)
         res.status(500).send({ status: "error", data: "Internal server error" });
@@ -101,9 +101,17 @@ app.post("/login", async (req, res) => {
 app.post('/userdata', async (req, res) => {
     const { token } = req.body;
     try {
-        const user = jwt.verify(token, jwtSecret);
-        const usercontactinfo = user.contactinfo;
+        const user = jwt.verify(token, jwtSecret, (err, res) => {
+            if (err) {
+                return 'token expired'
+            }
+            return res;
+        });
+        if (user == 'token expired') {
+            return res.send({ status: "error", data: 'token expired' });
+        }
 
+        const usercontactinfo = user.contactinfo;
         User.findOne({ contactinfo: usercontactinfo }).then((data) => {
             return res.send({ status: "ok", data: data });
         })
@@ -250,13 +258,13 @@ app.post('/alloutlets', async (req, res) => {
 
 app.get('/alloutlets2', async (req, res) => { // Use GET instead of POST
     try {
-      const outlets = await OutletInfo.find({});
-      res.status(200).send({ status: 'ok', data: outlets });
+        const outlets = await OutletInfo.find({});
+        res.status(200).send({ status: 'ok', data: outlets });
     } catch (err) {
-      console.log(err);
-      res.status(500).send({ status: 'error', data: 'Internal server error' });
+        console.log(err);
+        res.status(500).send({ status: 'error', data: 'Internal server error' });
     }
-  });
+});
 
 // ----------------------------- Create a new order endpoint ----------------------------- //
 app.post('/createorder', async (req, res) => {
