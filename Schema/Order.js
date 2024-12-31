@@ -55,7 +55,9 @@ const orderSchema = new mongoose.Schema({
     date: { type: String, required: true },
     name: { type: userSchema, required: true },
     items: { type: OrderItemsSchema, required: true },
-    totalPrice: { type: Number, required: true }
+    totalPrice: { type: Number, required: true },
+    timer: { type: Number, default: 0 },
+    startTime: { type: Date }
 });
 
 module.exports = mongoose.model('OrderInfo', orderSchema);
