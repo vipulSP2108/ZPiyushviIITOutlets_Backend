@@ -1,10 +1,13 @@
 // npx nodemon app
+// npx expo start
 
 const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const PORT = process.env.PORT || 5001;
+const { v4: uuidv4 } = require('uuid'); // For unique OTP generation
+const nodemailer = require('nodemailer'); // For sending OTP via email
 
 const app = express();
 app.use(express.json());
@@ -31,7 +34,31 @@ app.get("/", (req, res) => {
     res.send({ status: "started" });
 });
 
+// ----------------------------- Otp ----------------------------- //
+
+// Email setup for OTP (example using nodemailer)
+let transporter = nodemailer.createTransport({
+    secure: true,
+    host: 'smtp.gmail.com',
+    // sendmail: true,
+    // newline: 'unix',
+    path: 465, // '/usr/sbin/sendmail'
+    auth: {
+        user: 'vipulapatil21@gmail.com',
+        pass: 'ksfx licp iqco qxfo'
+    }
+});
+
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000)
+function generateOtpAndExpiry() {
+    const otp = generateOTP(); // Use your preferred OTP generation method
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000).toString(); // 5 minutes in milliseconds
+    return { otp, otpExpiry };
+  }
+
+
 // ----------------------------- register ----------------------------- //
+
 app.post("/register", async (req, res) => {
     const { name, contactinfo, password, role } = req.body;
 
@@ -40,32 +67,111 @@ app.post("/register", async (req, res) => {
     }
 
     try {
-
-        // Check if user with the same contactinfo and role already exists
-        const oldUser = await User.findOne({ contactinfo: contactinfo, role: role });
+        const oldUser = await User.findOne({ contactinfo, role });
         if (oldUser) {
             return res.status(400).send({ status: "error", data: "User with this contact info and role already exists" });
         }
 
+        const { otp, otpExpiry } = generateOtpAndExpiry();
         const encryptedPassword = await bcrypt.hash(password, 10);
         const user = new User({
-            name: name,
-            contactinfo: contactinfo,
+            name,
+            contactinfo,
             password: encryptedPassword,
-            role: role
+            role,
+            otp,
+            otpExpiry,
+            isVerified: false,
         });
 
         await user.save();
 
-        res.status(201).send({ status: "ok", data: "User Created" });
+        transporter.sendMail({
+            to: contactinfo,
+            subject: 'Your OTP Code',
+            html: `Your OTP is ${otp}. It is valid for 5 minutes.`,
+        });
 
-    } catch (err) {
-        if (err.code === 11000) {
-            return res.status(400).send({ status: "error", data: "Duplicate key error: contact info and role already exist" });
-        }
+        res.status(201).send({ status: "ok", data: "OTP sent to your contact info" });
+    } catch (error) {
+        console.error(error);
         res.status(500).send({ status: "error", data: "Internal server error" });
     }
 });
+
+// ----------------------------- Verify OTP -----------------------------  //
+app.post("/verifyotp", async (req, res) => {
+    const { contactinfo, otp } = req.body;
+
+    try {
+        const user = await User.findOne({ contactinfo });
+        if (!user) {
+            return res.status(400).send({ status: "error", data: "User not found" });
+        }
+
+        if (user.otpExpiry < Date.now()) {
+            return res.status(400).send({ status: "error", data: "OTP expired" });
+        }
+
+        if (user.otp !== otp) {
+            return res.status(400).send({ status: "error", data: "OTP InCorrect" });
+        }
+
+        // Clear OTP and activate the user
+        user.otp = null;
+        user.otpExpiry = null;
+        user.isVerified = true;
+        await user.save();
+
+        res.status(200).send({ status: "ok", data: "OTP verified, user registered" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ status: "error", data: "Internal server error" });
+    }
+});
+
+// ----------------------------- Resend OTP ----------------------------- //
+app.post("/resendotp", async (req, res) => {
+    const { contactinfo } = req.body;
+  
+    try {
+      const user = await User.findOne({ contactinfo });
+  
+      if (!user) {
+        return res.status(400).send({ status: "error", data: "User not found" });
+      }
+  
+      if (user.isVerified) {
+        return res.status(400).send({ status: "error", data: "User already verified" });
+      }
+  
+      // Check if OTP expiry is within a reasonable timeframe (e.g., 1 minute)
+      const now = new Date();
+      const otpExpiryDate = new Date(user.otpExpiry);
+      const isRecent = now - otpExpiryDate < 60 * 1000; // 1 minute in milliseconds
+  
+      if (isRecent) {
+        return res.status(429).send({ status: "error", data: "OTP resend limit reached. Try again later." });
+      }
+  
+      const { otp, otpExpiry } = generateOtpAndExpiry();
+  
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
+      await user.save();
+  
+      transporter.sendMail({
+        to: contactinfo,
+        subject: 'Your OTP Code',
+        html: `Your OTP is ${otp}. It is valid for 5 minutes.`,
+      });
+  
+      res.status(200).send({ status: "ok", data: "OTP sent to your contact info" });
+    } catch (error) {
+      console.error(error);
+      res.status(500).send({ status: "error", data: "Internal server error" });
+    }
+  });
 
 // ----------------------------- login ----------------------------- //
 app.post("/login", async (req, res) => {
@@ -81,7 +187,11 @@ app.post("/login", async (req, res) => {
         }
 
         if (oldUser.role !== role) {
-            return res.status(400).send({ status: "error", data: 'Incorrect role. The appropriate role is ${oldUser.role}' });
+            return res.status(400).send({ status: "error", data: `Incorrect role. The appropriate role is ${oldUser.role}` });
+        }
+
+        if (oldUser.isVerified == false) {
+            return res.status(400).send({ status: "notVerified", data: "Not Verified" });
         }
 
         const isPasswordMatch = await bcrypt.compare(password, oldUser.password);
@@ -340,9 +450,44 @@ app.post("/getorderseller", async (req, res) => {
     try {
         const orderSeller = await OrderInfo.find({ "items.userId": contactinfo });
         if (orderSeller.length === 0) {
-            return res.status(400).send({ status: "error", data: "Seller not found" });
+            return res.status(300).send({ status: 'alert', data: "No orders Found" });
         }
         res.status(200).send({ status: 'ok', data: orderSeller });
+    } catch (err) {
+        console.log(err);
+        res.status(500).send({ status: "error", data: "Internal server error" });
+    }
+});
+
+// ----------------------------- order status endpoint ----------------------------- //
+
+
+// Accept an Order and Set Timer
+app.post('/acceptOrder', async (req, res) => {
+    try {
+        const { orderId, timer } = req.body;
+        const order = await OrderInfo.findOne({ id: orderId });
+
+        if (!order) {
+            return res.status(404).send({ status: "error", data: "Order not found" });
+        }
+
+        // Update order status to "Accepted"
+        order.status = "Accepted";
+
+        // Set the timer for the order
+        order.startTime = new Date();  // Sets the current timestamp
+        order.timer = timer;
+
+        // Check if startTime is undefined before saving
+        if (!order.startTime) {
+            return res.status(400).send({ status: "error", data: "Start time is required." });
+        }
+
+        // Save the order
+        await order.save();
+
+        res.status(200).send({ status: "ok", data: order });
     } catch (err) {
         console.log(err);
         res.status(500).send({ status: "error", data: "Internal server error" });
@@ -352,7 +497,71 @@ app.post("/getorderseller", async (req, res) => {
 
 
 
+// Decline an Order
+app.post('/declineOrder', async (req, res) => {
+    try {
+        const { orderId } = req.body;
+
+        // Find the order by ID
+        const order = await OrderInfo.findOne({ id: orderId });
+
+        if (!order) {
+            return res.status(404).send({ status: "error", data: "Order not found" });
+        }
+
+        // Update order status to "Declined"
+        order.status = "Declined";
+        await order.save();
+
+        // Now delete the order if status is "Declined"
+        await OrderInfo.deleteOne({ id: orderId });
+
+        res.status(200).send({ status: "ok", data: "Order declined and deleted" });
+    } catch (err) {
+        console.log(err);
+        res.status(500).send({ status: "error", data: "Internal server error" });
+    }
+});
+
+app.post('/changeOrderStatus', async (req, res) => {
+    try {
+        const { orderId, newStatus } = req.body;
+
+        // Find the order by ID
+        const order = await OrderInfo.findOne({ id: orderId });
+
+        if (!order) {
+            return res.status(404).send({ status: "error", data: "Order not found" });
+        }
+
+        // Update order status to "Closed"
+        order.status = newStatus;
+        await order.save();
+
+        // Now delete the order if status is "Closed"
+        if (newStatus == "Delivered"){
+            await OrderInfo.deleteOne({ id: orderId });
+        }
+
+        res.status(200).send({ status: "ok", data: "Order closed and deleted" });
+    } catch (err) {
+        console.log(err);
+        res.status(500).send({ status: "error", data: "Internal server error" });
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
 app.listen(PORT, () => {
     console.log(`Server started on port ${PORT}`);
 });
-
