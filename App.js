@@ -54,7 +54,7 @@ function generateOtpAndExpiry() {
     const otp = generateOTP(); // Use your preferred OTP generation method
     const otpExpiry = new Date(Date.now() + 5 * 60 * 1000).toString(); // 5 minutes in milliseconds
     return { otp, otpExpiry };
-  }
+}
 
 
 // ----------------------------- register ----------------------------- //
@@ -133,45 +133,45 @@ app.post("/verifyotp", async (req, res) => {
 // ----------------------------- Resend OTP ----------------------------- //
 app.post("/resendotp", async (req, res) => {
     const { contactinfo } = req.body;
-  
+
     try {
-      const user = await User.findOne({ contactinfo });
-  
-      if (!user) {
-        return res.status(400).send({ status: "error", data: "User not found" });
-      }
-  
-      if (user.isVerified) {
-        return res.status(400).send({ status: "error", data: "User already verified" });
-      }
-  
-      // Check if OTP expiry is within a reasonable timeframe (e.g., 1 minute)
-      const now = new Date();
-      const otpExpiryDate = new Date(user.otpExpiry);
-      const isRecent = now - otpExpiryDate < 60 * 1000; // 1 minute in milliseconds
-  
-      if (isRecent) {
-        return res.status(429).send({ status: "error", data: "OTP resend limit reached. Try again later." });
-      }
-  
-      const { otp, otpExpiry } = generateOtpAndExpiry();
-  
-      user.otp = otp;
-      user.otpExpiry = otpExpiry;
-      await user.save();
-  
-      transporter.sendMail({
-        to: contactinfo,
-        subject: 'Your OTP Code',
-        html: `Your OTP is ${otp}. It is valid for 5 minutes.`,
-      });
-  
-      res.status(200).send({ status: "ok", data: "OTP sent to your contact info" });
+        const user = await User.findOne({ contactinfo });
+
+        if (!user) {
+            return res.status(400).send({ status: "error", data: "User not found" });
+        }
+
+        if (user.isVerified) {
+            return res.status(400).send({ status: "error", data: "User already verified" });
+        }
+
+        // Check if OTP expiry is within a reasonable timeframe (e.g., 1 minute)
+        const now = new Date();
+        const otpExpiryDate = new Date(user.otpExpiry);
+        const isRecent = now - otpExpiryDate < 60 * 1000; // 1 minute in milliseconds
+
+        if (isRecent) {
+            return res.status(429).send({ status: "error", data: "OTP resend limit reached. Try again later." });
+        }
+
+        const { otp, otpExpiry } = generateOtpAndExpiry();
+
+        user.otp = otp;
+        user.otpExpiry = otpExpiry;
+        await user.save();
+
+        transporter.sendMail({
+            to: contactinfo,
+            subject: 'Your OTP Code',
+            html: `Your OTP is ${otp}. It is valid for 5 minutes.`,
+        });
+
+        res.status(200).send({ status: "ok", data: "OTP sent to your contact info" });
     } catch (error) {
-      console.error(error);
-      res.status(500).send({ status: "error", data: "Internal server error" });
+        console.error(error);
+        res.status(500).send({ status: "error", data: "Internal server error" });
     }
-  });
+});
 
 // ----------------------------- login ----------------------------- //
 app.post("/login", async (req, res) => {
@@ -555,8 +555,13 @@ app.post('/changeOrderStatus', async (req, res) => {
         order.status = newStatus;
         await order.save();
 
-        // Now delete the order if status is "Closed"
-        if (newStatus == "Delivered"){
+        // delete the order if outlet wants only
+        // if (newStatus == "Delivered"){
+        //     await OrderInfo.deleteOne({ id: orderId });
+        // }
+
+        // delete the order if both wants
+        if (newStatus == "Received") {
             await OrderInfo.deleteOne({ id: orderId });
         }
 
