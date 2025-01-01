@@ -440,6 +440,23 @@ app.post('/createorder', async (req, res) => {
 //     }
 // });
 
+app.post("/getorderbuyer", async (req, res) => {
+    const { contactinfo } = req.body;
+    if (!contactinfo) {
+        return res.status(400).send({ status: "error", data: "Contact info is required" });
+    }
+
+    try {
+        const orderSeller = await OrderInfo.find({ "name.contactinfo": contactinfo });
+        if (orderSeller.length === 0) {
+            return res.status(300).send({ status: 'alert', data: "No orders Found" });
+        }
+        res.status(200).send({ status: 'ok', data: orderSeller });
+    } catch (err) {
+        console.log(err);
+        res.status(500).send({ status: "error", data: "Internal server error" });
+    }
+});
 
 app.post("/getorderseller", async (req, res) => {
     const { contactinfo } = req.body;
