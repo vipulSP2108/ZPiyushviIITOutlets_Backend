@@ -483,7 +483,7 @@ app.post("/getorderseller", async (req, res) => {
 app.post('/acceptOrder', async (req, res) => {
     try {
         const { orderId, timer } = req.body;
-        const order = await OrderInfo.findOne({ id: orderId });
+        const order = await OrderInfo.findOne({ _id: orderId });
 
         if (!order) {
             return res.status(404).send({ status: "error", data: "Order not found" });
@@ -520,7 +520,7 @@ app.post('/declineOrder', async (req, res) => {
         const { orderId } = req.body;
 
         // Find the order by ID
-        const order = await OrderInfo.findOne({ id: orderId });
+        const order = await OrderInfo.findOne({ _id: orderId });
 
         if (!order) {
             return res.status(404).send({ status: "error", data: "Order not found" });
@@ -531,7 +531,7 @@ app.post('/declineOrder', async (req, res) => {
         await order.save();
 
         // Now delete the order if status is "Declined"
-        await OrderInfo.deleteOne({ id: orderId });
+        await OrderInfo.deleteOne({ _id: orderId });
 
         res.status(200).send({ status: "ok", data: "Order declined and deleted" });
     } catch (err) {
@@ -542,13 +542,19 @@ app.post('/declineOrder', async (req, res) => {
 
 app.post('/changeOrderStatus', async (req, res) => {
     try {
-        const { orderId, newStatus } = req.body;
+        // const { orderId, newStatus } = req.body;
+        const { orderId, newStatus, issue } = req.body;
 
         // Find the order by ID
-        const order = await OrderInfo.findOne({ id: orderId });
+        const order = await OrderInfo.findOne({ _id: orderId });
 
         if (!order) {
             return res.status(404).send({ status: "error", data: "Order not found" });
+        }
+
+        if (issue) {
+            order.issue = issue;
+            await order.save();
         }
 
         // Update order status to "Closed"
@@ -557,13 +563,16 @@ app.post('/changeOrderStatus', async (req, res) => {
 
         // delete the order if outlet wants only
         // if (newStatus == "Delivered"){
-        //     await OrderInfo.deleteOne({ id: orderId });
+        //     await OrderInfo.deleteOne({ _id: orderId });
         // }
 
         // delete the order if both wants
-        if (newStatus == "Received") {
-            await OrderInfo.deleteOne({ id: orderId });
+        if (newStatus == "Received" || newStatus == "Complaint_Registered") {
+            await OrderInfo.deleteOne({ _id: orderId });
         }
+        // if (newStatus == "Complaint_Registered") {
+        //     await OrderInfo.deleteOne({ _id: orderId });    
+        // }
 
         res.status(200).send({ status: "ok", data: "Order closed and deleted" });
     } catch (err) {
