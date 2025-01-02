@@ -30,6 +30,9 @@ const OutletInfo = mongoose.model("OutletInfo");
 require('./Schema/Order');
 const OrderInfo = mongoose.model("OrderInfo");
 
+require('./Schema/OrderHistory');
+const OrderHistoryInfo = mongoose.model("OrderHistoryInfo");
+
 app.get("/", (req, res) => {
     res.send({ status: "started" });
 });
@@ -540,12 +543,53 @@ app.post('/declineOrder', async (req, res) => {
     }
 });
 
+// app.post('/changeOrderStatus', async (req, res) => {
+//     try {
+//         // const { orderId, newStatus } = req.body;
+//         const { orderId, newStatus, issue } = req.body;
+
+//         // Find the order by ID
+//         const order = await OrderInfo.findOne({ _id: orderId });
+//         console.log(order)
+
+//         if (!order) {
+//             return res.status(404).send({ status: "error", data: "Order not found" });
+//         }
+
+//         if (issue) {
+//             order.issue = issue;
+//             await order.save();
+//         }
+
+//         // Update order status to "Closed"
+//         order.status = newStatus;
+//         await order.save();
+
+//         // delete the order if outlet wants only
+//         // if (newStatus == "Delivered"){
+//         //     await OrderInfo.deleteOne({ _id: orderId });
+//         // }
+
+//         // delete the order if both wants
+//         if (newStatus == "Received" || newStatus == "Complaint_Registered") {
+//             await OrderInfo.deleteOne({ _id: orderId });
+//         }
+//         // if (newStatus == "Complaint_Registered") {
+//         //     await OrderInfo.deleteOne({ _id: orderId });    
+//         // }
+
+//         res.status(200).send({ status: "ok", data: "Order closed and deleted" });
+//     } catch (err) {
+//         console.log(err);
+//         res.status(500).send({ status: "error", data: "Internal server error" });
+//     }
+// });
+
+
 app.post('/changeOrderStatus', async (req, res) => {
     try {
-        // const { orderId, newStatus } = req.body;
         const { orderId, newStatus, issue } = req.body;
 
-        // Find the order by ID
         const order = await OrderInfo.findOne({ _id: orderId });
 
         if (!order) {
@@ -557,29 +601,61 @@ app.post('/changeOrderStatus', async (req, res) => {
             await order.save();
         }
 
-        // Update order status to "Closed"
+        // Update the order status
         order.status = newStatus;
         await order.save();
 
-        // delete the order if outlet wants only
-        // if (newStatus == "Delivered"){
-        //     await OrderInfo.deleteOne({ _id: orderId });
-        // }
-
-        // delete the order if both wants
         if (newStatus == "Received" || newStatus == "Complaint_Registered") {
-            await OrderInfo.deleteOne({ _id: orderId });
-        }
-        // if (newStatus == "Complaint_Registered") {
-        //     await OrderInfo.deleteOne({ _id: orderId });    
-        // }
+            const orderHistoryData = {
+                _idssss: order._id,
+                id: order.id,
+                massage: order.massage,
+                status: newStatus,
+                date: order.date,
+                totalPrice: order.totalPrice,
+                userInfocontactinfo: order.name.contactinfo,
+                storeInfocontactinfo: order.items.userId,
+                orders: order.items.orders.map(item => ({
+                    id: item.id,
+                    name: item.item,
+                    price: item.price,
+                    type: item.type,
+                    category: item.category,
+                    image: item.image,
+                    rating: item.rating,
+                    ratingcount: item.ratingcount,
+                    _id: item._id,
+                    quantity: item.quantity
+                })),
+                issue: issue || null
+            };
 
-        res.status(200).send({ status: "ok", data: "Order closed and deleted" });
+            const existingOrderHistory = await OrderHistoryInfo.findOne({ storeInfocontactinfo: order.items.userId });
+
+            if (existingOrderHistory) {
+                existingOrderHistory.orderDetails.push(orderHistoryData);
+                await existingOrderHistory.save();
+            } else {
+                const newOrderHistory = new OrderHistoryInfo({
+                    storeInfocontactinfo: order.items.userId,
+                    orderDetails: [orderHistoryData]
+                });
+                await newOrderHistory.save();
+            }
+
+            await OrderInfo.deleteOne({ _id: orderId });
+
+            res.status(200).send({ status: "ok", data: "Order closed, history saved, and deleted" });
+        } else {
+            res.status(200).send({ status: "ok", data: "Order status updated" });
+        }
+
     } catch (err) {
         console.log(err);
         res.status(500).send({ status: "error", data: "Internal server error" });
     }
 });
+
 
 
 
