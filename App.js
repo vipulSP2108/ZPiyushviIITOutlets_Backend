@@ -37,6 +37,32 @@ app.get("/", (req, res) => {
     res.send({ status: "started" });
 });
 
+// ----------------------------- login ----------------------------- //
+app.post("/storetoken", async (req, res) => {
+    const { contactinfo, storetokenFCM } = req.body;
+    console.log('contactinfo', contactinfo, storetokenFCM)
+
+    if (!contactinfo || !storetokenFCM) {
+        return res.status(400).send({ status: "error", data: "Contact info and storetokenFCM are required" });
+    }
+
+    try {
+        const oldUser = await User.findOne({ contactinfo: contactinfo });
+        if (!oldUser) {
+            return res.status(400).send({ status: "error", data: "User not exist" });
+        }
+        
+        oldUser.DeviceFCM = storetokenFCM;
+        await oldUser.save();
+
+        res.status(200).send({ status: "ok", data: token });
+
+    } catch (err) {
+        console.log(err)
+        res.status(500).send({ status: "error", data: "Internal server error" });
+    }
+});
+
 // ----------------------------- Otp ----------------------------- //
 
 // Email setup for OTP (example using nodemailer)
@@ -48,7 +74,7 @@ let transporter = nodemailer.createTransport({
     path: 465, // '/usr/sbin/sendmail'
     auth: {
         user: 'vipulapatil21@gmail.com',
-        pass: 'ksfx licp iqco qxfo'
+        pass: 'sznr ksdc eltm oyyf'
     }
 });
 
