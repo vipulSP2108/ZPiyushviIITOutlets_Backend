@@ -9,6 +9,7 @@ const itemOrdersSchema = new mongoose.Schema({
     status: { type: Boolean, required: true },
     category: { type: String, required: true },
     image: { type: String, required: true },
+    featured: { type: Boolean, default: false },
     rating: { type: Number, required: true },
     ratingcount: { type: Number, required: true },
     _id: { type: mongoose.Schema.Types.ObjectId, required: true },

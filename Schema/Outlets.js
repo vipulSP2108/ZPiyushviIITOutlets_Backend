@@ -9,6 +9,7 @@ const itemSchema = new mongoose.Schema({
     status: { type: Boolean },
     category: { type: String, required: true },
     image: { type: String, required: true },
+    featured: { type: Boolean, default: false },
     // quantity: { type: Number, required: true },
     rating: { type: Number },
     ratingcount: { type: Number },

@@ -6,6 +6,7 @@ const itemOrdersSchema = new mongoose.Schema({
     price: { type: Number, required: true },
     type: { type: String, required: true },
     category: { type: String, required: true },
+    featured: { type: Boolean, default: false },
     image: { type: String, required: true },
     rating: { type: Number, required: true },
     ratingcount: { type: Number, required: true },

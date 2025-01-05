@@ -37,7 +37,7 @@ app.get("/", (req, res) => {
     res.send({ status: "started" });
 });
 
-// ----------------------------- login ----------------------------- //
+// ----------------------------- storetoken ----------------------------- //
 app.post("/storetoken", async (req, res) => {
     const { contactinfo, storetokenFCM } = req.body;
     console.log('contactinfo', contactinfo, storetokenFCM)
