@@ -492,7 +492,7 @@ app.post('/createorder', async (req, res) => {
             ];
             try {
                 const ticketChunk = await expo.sendPushNotificationsAsync(messages);
-                console.log(ticketChunk);
+                // console.log(ticketChunk);
             } catch (error) {
                 console.error('Error sending push notification:', error);
             }
