@@ -5,12 +5,16 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { Expo } = require('expo-server-sdk');
+
 const PORT = process.env.PORT || 5001;
 const { v4: uuidv4 } = require('uuid'); // For unique OTP generation
 const nodemailer = require('nodemailer'); // For sending OTP via email
 
 const app = express();
 app.use(express.json());
+
+const expo = new Expo()
 
 const jwtSecret = "aasjldjdspu29073ekjwhd2u8-u[uuwpiqwhdhuoy1028dhw";
 const mongoUrl = "mongodb+srv://vipulpatil:e1UzKh7o5ewlOQ7U@cluster0.drh80rq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
@@ -37,12 +41,28 @@ app.get("/", (req, res) => {
     res.send({ status: "started" });
 });
 
+const token = 'ExponentPushToken[uEcEo1LhkSBZCOfnm2cOG8]';
+
+app.post('/sample', async (_, res) => {
+    expo.sendPushNotificationsAsync([
+        {
+            to: token,
+            title: "Soil Water Level too Low!",
+            body: "Water your plant",
+            sound: 'default',
+        },
+    ]);
+    res.status(200).send("success");
+});
+
+
+
 // ----------------------------- storetoken ----------------------------- //
 app.post("/storetoken", async (req, res) => {
-    const { contactinfo, storetokenFCM } = req.body;
-    console.log('contactinfo', contactinfo, storetokenFCM)
+    const { contactinfo, storetokenFCM, storetokenEXPO } = req.body;
+    // console.log('contactinfo', contactinfo, storetokenFCM)
 
-    if (!contactinfo || !storetokenFCM) {
+    if (!contactinfo || !storetokenFCM || !storetokenEXPO) {
         return res.status(400).send({ status: "error", data: "Contact info and storetokenFCM are required" });
     }
 
@@ -51,11 +71,12 @@ app.post("/storetoken", async (req, res) => {
         if (!oldUser) {
             return res.status(400).send({ status: "error", data: "User not exist" });
         }
-        
+
         oldUser.DeviceFCM = storetokenFCM;
+        oldUser.DeviceEXPO = storetokenEXPO
         await oldUser.save();
 
-        res.status(200).send({ status: "ok", data: token });
+        res.status(200).send({ status: "ok", data: 'stored token' });
 
     } catch (err) {
         console.log(err)
@@ -382,6 +403,24 @@ app.post('/useroutlets', async (req, res) => {
     }
 });
 
+// ----------------------------- outlet owner user order history ----------------------------- //
+app.post('/orderhistorydata', async (req, res) => {
+    const { token } = req.body;
+
+    try {
+        const user = jwt.verify(token, jwtSecret);
+        const usercontactinfo = user.contactinfo;
+
+        const outlets = await OrderHistoryInfo.find({ storeInfocontactinfo: usercontactinfo });
+
+        res.status(200).send({ status: "ok", data: outlets });
+
+    } catch (err) {
+        console.log(err);
+        res.status(500).send({ status: "error", data: "Internal server error" });
+    }
+});
+
 // ----------------------------- Get all outlets with full menu ----------------------------- //
 app.post('/alloutlets', async (req, res) => {
     try {
@@ -409,7 +448,6 @@ app.get('/alloutlets2', async (req, res) => { // Use GET instead of POST
 app.post('/createorder', async (req, res) => {
     try {
         const { items, totalPrice, name, date, status, massage, id } = req.body;
-
         let order = await OrderInfo.findOne({ id });
 
         if (order) {
@@ -440,11 +478,33 @@ app.post('/createorder', async (req, res) => {
 
             res.status(201).send({ status: "ok", data: newOrder });
         }
+
+        const outletOwner = await User.findOne({ contactinfo: items.userId });
+        if (outletOwner?.DeviceEXPO) {
+            const messages = [
+                {
+                    to: outletOwner.DeviceEXPO,
+                    title: "New Order Alert!",
+                    body: `You have received a new order worth ${totalPrice}. Please check your dashboard for details.`,
+                    sound: 'default',
+                    data: { orderStatus: 'new', totalAmount: totalPrice },
+                },
+            ];
+            try {
+                const ticketChunk = await expo.sendPushNotificationsAsync(messages);
+                console.log(ticketChunk);
+            } catch (error) {
+                console.error('Error sending push notification:', error);
+            }
+        } else {
+            console.log('No device token found for outlet owner.');
+        }
     } catch (err) {
         console.log(err);
         res.status(500).send({ status: "error", data: "Internal server error" });
     }
 });
+
 // app.post('/createorder', async (req, res) => {
 //     try {
 //         const { items, totalPrice, name, date,
@@ -558,6 +618,42 @@ app.post('/declineOrder', async (req, res) => {
         // Update order status to "Declined"
         order.status = "Declined";
         await order.save();
+
+        const orderHistoryData = {
+            _idssss: order._id,
+            id: order.id,
+            massage: order.massage,
+            status: order.status,
+            date: order.date,
+            totalPrice: order.totalPrice,
+            userInfocontactinfo: order.name.contactinfo,
+            storeInfocontactinfo: order.items.userId,
+            orders: order.items.orders.map(item => ({
+                id: item.id,
+                name: item.item,
+                price: item.price,
+                type: item.type,
+                category: item.category,
+                image: item.image,
+                rating: item.rating,
+                ratingcount: item.ratingcount,
+                _id: item._id,
+                quantity: item.quantity
+            })),
+        };
+
+        const existingOrderHistory = await OrderHistoryInfo.findOne({ storeInfocontactinfo: order.items.userId });
+
+        if (existingOrderHistory) {
+            existingOrderHistory.orderDetails.unshift(orderHistoryData);
+            await existingOrderHistory.save();
+        } else {
+            const newOrderHistory = new OrderHistoryInfo({
+                storeInfocontactinfo: order.items.userId,
+                orderDetails: [orderHistoryData]
+            });
+            await newOrderHistory.save();
+        }
 
         // Now delete the order if status is "Declined"
         await OrderInfo.deleteOne({ _id: orderId });

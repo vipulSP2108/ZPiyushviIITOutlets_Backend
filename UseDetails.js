@@ -9,7 +9,8 @@ const userSchema = new mongoose.Schema({
     otp: { type: String },
     otpExpiry: { type: Date },
     isVerified: { type: Boolean, required: true },
-    DeviceFCM: { type: String }
+    DeviceFCM: { type: String },
+    DeviceEXPO: { type: String }
 });
 // userSchema.index({ contactinfo: 1, role: 1 }, { unique: true });
 

@@ -10,6 +10,8 @@
   "description": "",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "cron": "^3.3.2",
+    "expo-server-sdk": "^3.13.0",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.7.0",
