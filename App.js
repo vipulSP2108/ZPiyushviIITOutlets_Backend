@@ -600,9 +600,6 @@ app.post('/acceptOrder', async (req, res) => {
     }
 });
 
-
-
-
 // Decline an Order
 app.post('/declineOrder', async (req, res) => {
     try {
@@ -706,7 +703,6 @@ app.post('/declineOrder', async (req, res) => {
 //         res.status(500).send({ status: "error", data: "Internal server error" });
 //     }
 // });
-
 
 app.post('/changeOrderStatus', async (req, res) => {
     try {
