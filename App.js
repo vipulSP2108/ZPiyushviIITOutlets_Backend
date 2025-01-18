@@ -7,7 +7,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Expo } = require('expo-server-sdk');
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5002;
 const { v4: uuidv4 } = require('uuid'); // For unique OTP generation
 const nodemailer = require('nodemailer'); // For sending OTP via email
 
