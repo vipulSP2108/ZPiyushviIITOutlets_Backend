@@ -49,7 +49,7 @@ app.post('/sample', async (_, res) => {
             to: token,
             title: "Soil Water Level too Low!",
             body: "Water your plant",
-            sound: 'default',
+            sound: "./assets/sounds/notification.mp3",
         },
     ]);
     res.status(200).send("success");
