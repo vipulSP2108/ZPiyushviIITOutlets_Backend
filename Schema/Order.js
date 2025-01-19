@@ -46,7 +46,7 @@ const userSchema = new mongoose.Schema({
     _id: { type: mongoose.Schema.Types.ObjectId, required: true },
     name: { type: String, required: true },
     contactinfo: { type: String, required: true }, // Ensure this field is not null and unique if needed
-    phone: { type: String, required: true },
+    phone: { type: String },
     role: { type: String, required: true },
     password: { type: String, required: true }
 });

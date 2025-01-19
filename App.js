@@ -493,8 +493,8 @@ app.post('/createorder', async (req, res) => {
             const messages = [
                 {
                     to: outletOwner.DeviceEXPO,
-                    title: "New Order Alert!",
-                    body: `You have received a new order worth ${totalPrice}. Please check your dashboard for details.`,
+                    title: "🚨 New Order Alert!",
+                    body: `🛍️ You've just received a new order worth ₹${totalPrice}! Check your dashboard now for all the details and get started on fulfilling it. 📲`,
                     sound: 'default',
                     data: { orderStatus: 'new', totalAmount: totalPrice },
                 },
@@ -732,7 +732,7 @@ app.post('/changeOrderStatus', async (req, res) => {
         order.status = newStatus;
         await order.save();
 
-        if (newStatus == "Received" || newStatus == "Complaint_Registered") {
+        if (newStatus == "User Came" || newStatus == "Complaint_Registered") {
             const orderHistoryData = {
                 _idssss: order._id,
                 id: order.id,
@@ -774,6 +774,28 @@ app.post('/changeOrderStatus', async (req, res) => {
 
             res.status(200).send({ status: "ok", data: "Order closed, history saved, and deleted" });
         } else {
+            if (newStatus == "Prepared"){
+                const userOwner = await User.findOne({ contactinfo: order.name.contactinfo });
+                if (userOwner?.DeviceEXPO) {
+                    const messages = [
+                        {
+                            to: userOwner.DeviceEXPO,
+                            title: "🎉 Your Order is Ready!",
+                            body: `🥳 Great news! Your delicious order of ${order.items.name} has been prepared and is ready for you. Enjoy your meal! 🍽️`,
+                            sound: 'default',
+                            // data: { orderStatus: 'new', totalAmount: totalPrice },
+                        },
+                    ];
+                    try {
+                        const ticketChunk = await expo.sendPushNotificationsAsync(messages);
+                        console.log(ticketChunk);
+                    } catch (error) {
+                        console.error('Error sending push notification:', error);
+                    }
+                } else {
+                    console.log('No device token found for outlet owner.');
+                }
+            }
             res.status(200).send({ status: "ok", data: "Order status updated" });
         }
 
