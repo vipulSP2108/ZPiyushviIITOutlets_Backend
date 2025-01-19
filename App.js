@@ -110,9 +110,9 @@ function generateOtpAndExpiry() {
 // ----------------------------- register ----------------------------- //
 
 app.post("/register", async (req, res) => {
-    const { name, contactinfo, password, role } = req.body;
+    const { name, contactinfo, phone, password, role } = req.body;
 
-    if (!name || !contactinfo || !password || !role) {
+    if (!name || !contactinfo || !password || !role || !phone) {
         return res.status(400).send({ status: "error", data: "All fields are required" });
     }
 
@@ -129,6 +129,7 @@ app.post("/register", async (req, res) => {
             contactinfo,
             password: encryptedPassword,
             role,
+            phone,
             otp,
             otpExpiry,
             isVerified: false,
@@ -449,7 +450,8 @@ app.post('/createorder', async (req, res) => {
     try {
         const { items, totalPrice, name, date, status, massage, id } = req.body;
         let order = await OrderInfo.findOne({ id });
-
+        console.log(name)
+        
         if (order) {
             // Update existing order
             order.name = name;
@@ -458,7 +460,7 @@ app.post('/createorder', async (req, res) => {
             order.date = date;
             order.status = status;
             order.massage = massage;
-
+            
             await order.save();
 
             res.status(200).send({ status: "ok", data: order });
