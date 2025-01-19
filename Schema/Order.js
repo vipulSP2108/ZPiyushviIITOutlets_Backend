@@ -36,7 +36,8 @@ const OrderItemsSchema = new mongoose.Schema({
     shopkeeperName: { type: String, required: true },
     type: { type: String, required: true },
     upiId: { type: String, required: true },
-    userId: { type: String, required: true }
+    userId: { type: String, required: true },
+    phone: { type: String },
 });
 
 

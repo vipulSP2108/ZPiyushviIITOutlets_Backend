@@ -303,11 +303,18 @@ app.post('/addoutlet', async (req, res) => {
         const user = jwt.verify(token, jwtSecret);
         const userId = user.contactinfo;
 
+        const getPhone = async () => {
+            const user = await User.findOne({ contactinfo: userId });
+            return user ? user.phone : null;
+        };
+
+        const phone = await getPhone(); 
+
         let outlet;
         if (id) {
             outlet = await OutletInfo.findOneAndUpdate({ id, userId }, {
                 name, shopkeeperName, upiId, details, image, location, type,
-                openingTime, closingTime, leaveDay, featured, offDays, menuType,
+                openingTime, closingTime, leaveDay, featured, offDays, menuType, phone
             }, { new: true });
             if (!outlet) {
                 return res.status(404).send({ status: "error", data: "Outlet not found" });
@@ -324,7 +331,7 @@ app.post('/addoutlet', async (req, res) => {
                 rating: 3,
                 ratingcount: 7,
                 name, shopkeeperName, upiId, details, image, location, type,
-                openingTime, closingTime, leaveDay, featured, offDays, userId, menuType,
+                openingTime, closingTime, leaveDay, featured, offDays, userId, menuType, phone
             });
             await outlet.save();
         }
@@ -450,8 +457,8 @@ app.post('/createorder', async (req, res) => {
     try {
         const { items, totalPrice, name, date, status, massage, id } = req.body;
         let order = await OrderInfo.findOne({ id });
-        console.log(name)
-        
+        // console.log(name)
+
         if (order) {
             // Update existing order
             order.name = name;

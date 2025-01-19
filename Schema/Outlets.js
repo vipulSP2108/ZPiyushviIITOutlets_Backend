@@ -43,7 +43,7 @@ const outletSchema = new mongoose.Schema({
     closingTime: { type: String, required: true },
     leaveDay: { type: String },
     userId: { type: String, ref: 'User', required: true },
-
+    phone: { type: String },
     menu: { type: [menuCategorySchema] },
 });
 
