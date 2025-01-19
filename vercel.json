@@ -1,10 +1,5 @@
 {
     "version": 2,
-<<<<<<< Updated upstream
-    "builds": [{ "src": "./App.js", "use": "@vercel/node" }], 
-    "routes": [{ "src": "/(.*)", "dest": "/"}]
-}
-=======
     "builds": [
      {
       "src": "App.js",
@@ -19,4 +14,3 @@
      }
     ]
 }
->>>>>>> Stashed changes
