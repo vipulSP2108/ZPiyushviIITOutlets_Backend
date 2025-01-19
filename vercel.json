@@ -1,5 +1,22 @@
 {
     "version": 2,
+<<<<<<< Updated upstream
     "builds": [{ "src": "./App.js", "use": "@vercel/node" }], 
     "routes": [{ "src": "/(.*)", "dest": "/"}]
 }
+=======
+    "builds": [
+     {
+      "src": "App.js",
+      "use": "@vercel/node",
+      "config": { "includeFiles": ["dist/**"] }
+     }
+    ],
+    "routes": [
+     {
+      "src": "/(.*)",
+      "dest": "App.js"
+     }
+    ]
+}
+>>>>>>> Stashed changes
